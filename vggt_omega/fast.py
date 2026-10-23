@@ -1,4 +1,4 @@
-"""Fast inference for VGGT-Omega (exp 011, branch attempt/fast): any frame count / image size, same outputs as VGGTOmega.forward.
+"""Fast inference for VGGT-Omega: any frame count / image size, same outputs as VGGTOmega.forward.
 
     from vggt_omega.fast import FastVGGTOmega
     fm = FastVGGTOmega(model, variant="friendly" | "max")   # converts the loaded VGGTOmega in place
@@ -10,7 +10,7 @@ aggregator under bf16 autocast with an fp32 residual stream (fp32 LayerNorms, fp
   stream stays fp32 (as upstream; DINOv3 ViT-L streams exceed the fp16 range), LayerNorm fp32 in -> fp16 out; k-bias mask
   folded into the qkv bias once; LayerScale + residual as addcmul into the fp32 stream
 - q/k LayerNorm + 2D RoPE on the packed qkv output (friendly: plain PyTorch; max: one Triton kernel, in place, softmax scale
-  folded into q), attention: friendly torch SDPA, max fastbb flash64 (`attn`="hh"/"fh") with fp16-accumulating GEMMs (`gacc`)
+  folded into q), attention: friendly torch SDPA, max vendored fastbb flash64 (`attn`="hh"/"fh") with fp16-accumulating GEMMs (`gacc`)
 - DPT dense head fp16 channels-last (upstream fp32): token LayerNorm fp32 -> fp16 NHWC (free channels-last view), the two
   final 1x1 convs (depth / confidence) as one fp32 linear on NHWC, exp in fp32; camera head fp32 as upstream
 friendly = plain PyTorch ops only (ONNX-exportable); max = + Triton kernels (LayerNorm, add+LayerNorm, q/k norm + RoPE),
@@ -71,7 +71,7 @@ class FastVGGTOmega:
         self.m, self.variant, self.cfg, self.dense_chunk = model.eval(), variant, cfg, dense_chunk
         self.attn, self.gacc, self.kern = cfg["attn"], cfg["gacc"], cfg["kern"]
         if self.attn != "sdpa":
-            from fastbb.attention import attention
+            from .fastbb_vendored.attention import attention
             self._fb_attention = attention
         if self.kern:
             from . import fast_kernels as K
