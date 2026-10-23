@@ -1,3 +1,19 @@
+> **You are on `cuda-kernels`.** Research fork of the upstream `vggt-omega` repository (base `48b23c8`, 2026-10; `main` mirrors upstream). `cuda-kernels` = upstream plus custom CUDA kernels and fast paths (fused attention/MLP kernels (vendored fastbb)). Prebuilt binaries are tied to the torch/CUDA build they were made with; the vendored fastbb cudnn-frontend paths need `pip install nvidia-cudnn-frontend`.
+>
+> Licence, as upstream (see LICENSE)
+
+RTX 5060 Ti 16 GB, torch cu130, 2026-10-23. Median of N runs after warm-up, fixed seeds. Speed-up columns: vs upstream + flags / vs upstream. Peak memory = torch peak allocated / reserved.
+
+Flags in the 'upstream + flags' row (no source change): cudnn.benchmark, TF32 (bf16 autocast kept).
+
+| version | size A ms | size B ms | speed-up at A (vs flags / vs upstream) | speed-up at B | peak MB at A (alloc / reserved) | startup / first call / new size | accuracy |
+|---|---|---|---|---|---|---|---|
+| upstream (bf16 autocast) | 1057.8 | 3140 | 1.00x | 1.00x | 6290 / 8140 | not measured | ETH3D median-aligned absrel 0.0062, a5 0.874, a10 0.9395 |
+| upstream + flags (cudnn.benchmark, TF32; bf16 autocast kept) | 1001.6 | 3125 | 1.00x / 1.06x | 1.00x / 1.00x | 14570 (alloc) | first call +2.5 s | identical to upstream |
+| **cuda-kernels** | 510 | 1652 | 1.96x / 2.07x | 1.89x / 1.90x | 3580 / 7650 | not measured | absrel 0.0062, a5 0.875, a10 0.9402; depth rel. diff median 7e-4, pose diff 9.5e-4 |
+
+---
+
 <div align="center">
 <h1>VGGT-&Omega;</h1>
 
